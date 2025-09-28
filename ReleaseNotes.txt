@@ -1,0 +1,12 @@
+Release notes
+
+Todo
+- fix windows launching multiple, not terminating, and http status not updating
+- fix update checker
+- add setup.exe, .dmg, .rpm and .deb installers
+- possible add launch in active user session ability
+- add Windows service capability
+- consider using JSONC: https://github.com/tidwall/jsonc for comments in json
+
+0.1 
+- initial checkin

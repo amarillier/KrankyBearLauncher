@@ -1,0 +1,19 @@
+
+[
+  {
+    "name": "HourlyApp",
+    "path": "/usr/bin/echo",
+    "params": "Hello from hourly app",
+    "launch_time": "00:00",
+    "duration_minutes": 1,
+    "recurrence": "hourly"
+  },
+  {
+    "name": "DailyApp",
+    "path": "/usr/bin/echo",
+    "params": "Hello from daily app",
+    "launch_time": "01:00",
+    "duration_minutes": 1,
+    "recurrence": "daily"
+  }
+]

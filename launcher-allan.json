@@ -1,0 +1,30 @@
+[
+  {
+    "name": "timer",
+    "path": "~/bin/timer",
+    "params": "",
+    "launch_times": ["14:39", "14:41", "14:43"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "A simple timer app I wrote"
+  },
+    {
+    "name": "Inkscape",
+    "path": "/Applications/Inkscape.app/Contents/MacOS/inkscape",
+    "params": "",
+    "launch_times": ["14:39", "14:43"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "Vector graphics editor"
+  },
+  {
+    "name": "HourlyApp",
+    "path": "/usr/bin/echo",
+    "params": "Hello from hourly app",
+    "launch_times": ["00:00"],
+    "duration_minutes": 1,
+    "recurrence": "hourly",
+    "comment": "An app that runs every hour"
+  }
+]
+

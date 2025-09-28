@@ -1,0 +1,27 @@
+
+[
+  {
+    "name": "timer",
+    "path": "~/bin/timer",
+    "params": "",
+    "launch_times": ["13:48", "13:52"],
+    "duration_minutes": 2,
+    "recurrence": "daily"
+  },
+  {
+    "name": "Inkscape",
+    "path": "/Applications/Inkscape.app/Contents/MacOS/inkscape",
+    "params": "",
+    "launch_times": ["13:49"],
+    "duration_minutes": 1,
+    "recurrence": "daily"
+  },
+  {
+    "name": "HourlyApp",
+    "path": "/usr/bin/echo",
+    "params": "Hello from hourly app",
+    "launch_times": ["00:00"],
+    "duration_minutes": 1,
+    "recurrence": "hourly"
+  }
+]
