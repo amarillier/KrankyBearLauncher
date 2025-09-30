@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"flag"
@@ -11,11 +12,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	updatechecker "github.com/amarillier/go-update-checker"
@@ -42,16 +43,18 @@ type RunningApp struct {
 
 // ====== Globals ======
 var (
-	checkUpdate    bool
-	configPath     string
-	logPath        string
-	dryRun         bool
-	listOnly       bool
-	showStatus     bool
-	maxLogSize     int64
-	logRetention   int
-	reloadInterval time.Duration
-	verboseLog     bool
+	checkUpdate      bool
+	checkUpdateOnly  bool
+	makeSampleConfig bool
+	configPath       string
+	logPath          string
+	dryRun           bool
+	listOnly         bool
+	showStatus       bool
+	maxLogSize       int64
+	logRetention     int
+	reloadInterval   time.Duration
+	verboseLog       bool
 	// Maps of currently running processes and their commands
 	// Use ONE mutex to protect BOTH maps to avoid race conditions.
 	runningProcs = make(map[string]*exec.Cmd)
@@ -65,7 +68,7 @@ var (
 
 const (
 	appName    = "Kranky Bear Launcher"
-	appVersion = "0.1.0" // see FyneApp.toml
+	appVersion = "0.1.1" // see FyneApp.toml
 	appAuthor  = "Allan Marillier"
 )
 
@@ -106,6 +109,135 @@ func expandPath(p string) string {
 	return p
 }
 
+// find child PIDs of a given parent PID (Unix only, uses pgrep)
+func findChildPIDs(parentPID int) ([]int, error) {
+	out, err := exec.Command("pgrep", "-P", strconv.Itoa(parentPID)).Output()
+	if err != nil {
+		return nil, err
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	var pids []int
+	for _, line := range lines {
+		if pid, err := strconv.Atoi(strings.TrimSpace(line)); err == nil {
+			pids = append(pids, pid)
+		}
+	}
+	return pids, nil
+}
+
+func makeSampleConfigs() error {
+	// Windows sample config
+	winSample := `[
+  {
+    "name": "notepad",
+    "path": "C:\\Windows\\System32\\notepad.exe",
+    "params": "",
+    "launch_times": ["08:56", "08:58"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "Notepad sucks - why do this? NOTE: Double backslash to escape \\ in path"
+  },
+{
+    "name": "DB Browser SQLite",
+    "path": "c:\\Program Files\\DB Browser for SQLite\\DB Browser for SQLite.exe",
+    "params": "",
+    "launch_times": ["10:00"],
+    "duration_minutes": 2,
+    "recurrence": "daily",
+    "comment": "DB Browser for SQLite NOTE: Double backslash to escape \\ in path"
+  },
+  {
+    "name": "chrome",
+    "path": "c:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "params": "--new-window --incognito https://www.google.com/",
+    "launch_times": ["08:44", "08:46"],
+    "duration_minutes": 2,
+    "recurrence": "daily",
+    "comment": "NOT RECOMMENDED: Unreliable detection - Google Chrome in incognito mode, use --new-window to force a new window"
+  }
+]`
+	winPath := "launcher_windows_sample.json"
+	if err := os.WriteFile(winPath, []byte(winSample), 0644); err != nil {
+		return fmt.Errorf("failed to write Windows sample config: %w", err)
+	}
+	log.Printf("Windows sample config written to %s", winPath)
+
+	// non Windows sample config
+	nonWinSample := `[
+  {
+    "name": "timer",
+    "path": "~/bin/timer",
+    "params": "",
+    "launch_times": ["10:52", "10:54", "10:56"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "A simple timer app I wrote"
+  },
+  {
+    "name": "Inkscape",
+    "path": "/Applications/Inkscape.app/Contents/MacOS/inkscape",
+    "params": "",
+    "launch_times": ["10:53", "10:56"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "Vector graphics editor"
+  },
+  {
+    "name": "DB Browser for SQLite",
+    "path": "/Applications/DB Browser for SQLite.app/Contents/MacOS/DB Browser for SQLite",
+    "params": "",
+    "launch_times": ["10:53", "10:56"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "DB Browser - SQLite"
+  },
+  {
+    "name": "HourlyApp",
+    "path": "/usr/bin/echo",
+    "params": "Hello from hourly app",
+    "launch_times": ["00:00"],
+    "duration_minutes": 1,
+    "recurrence": "hourly",
+    "comment": "An app that runs every hour"
+  },
+  {
+    "name": "Google Chrome via shell script",
+    "path": "./chrome_launch.sh",
+    "params": "--incognito --new-window https://www.google.com/",
+    "launch_times": ["10:31", "10:33"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "NOT RECOMMENDED: Unreliable detection - Google Chrome in incognito mode, use --new-window to force a new window"
+  },
+  {
+    "name": "Google Chrome",
+    "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "params": "--new-window --new-window --incognito https://www.google.com/",
+    "launch_times": ["10:45", "10:47"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "NOT RECOMMENDED: Unreliable detection - Google Chrome in incognito mode, use --new-window to force a new window"
+  },
+  {
+    "name": "Microsoft Edge",
+    "path": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    "params": "https://www.google.com/",
+    "launch_times": ["11:25", "11:27", "11:29"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "NOT RECOMMENDED: Unreliable detection - Microsoft Edge in use -new-window -inprivate to force a new window"
+  }
+]
+`
+
+	nonWinPath := "launcher_nonwindows_sample.json"
+	if err := os.WriteFile(nonWinPath, []byte(nonWinSample), 0644); err != nil {
+		return fmt.Errorf("failed to write non Windows sample config: %w", err)
+	}
+	log.Printf("Non Windows sample config written to %s", nonWinPath)
+	return nil
+}
+
 // list scheduled applications and their details
 func listApps(apps []AppConfig) {
 	fmt.Println("Scheduled Applications:")
@@ -140,6 +272,20 @@ func paramsFor(app AppConfig) []string {
 		return nil
 	}
 	return splitArgsRespectingQuotes(os.ExpandEnv(app.Params))
+}
+
+// read PID from a file - MacOS Chrome weirdness workaround attempt, unused
+func readPIDFromFile(path string) (int, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read PID file: %w", err)
+	}
+	pidStr := strings.TrimSpace(string(data))
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid PID format: %w", err)
+	}
+	return pid, nil
 }
 
 // rotate log file if it exceeds max size
@@ -186,16 +332,113 @@ func splitArgsRespectingQuotes(s string) []string {
 
 // check github for application updates
 func updateChecker(repoOwner string, repo string, repoName string, repodl string) (string, bool) {
-	// uc := updatechecker.New("amarillier", "KrankyBearTimer", "Kranky Bear Timer", "", 1, false)
 	uc := updatechecker.New(repoOwner, repo, repoName, repodl, 0, false)
 	uc.CheckForUpdate(appVersion)
-	// uc.PrintMessage()
 	updtmsg := uc.Message
 	return updtmsg, uc.UpdateAvailable
 }
 
+// validate .json config file and exit out ASAP with error help if possible
+func validateConfigFindErrorLocation(data []byte, offset int64) (line, col int) {
+	line = 1
+	col = 1
+	for i := int64(0); i < offset && i < int64(len(data)); i++ {
+		if data[i] == '\n' {
+			line++
+			col = 1
+		} else {
+			col++
+		}
+	}
+	return
+}
+
+func ValidateConfig(jsonData []byte) ([]AppConfig, error) {
+	var configs []AppConfig
+
+	// Run regex-based pre-checks
+	if err := validateJsonSyntaxHints(jsonData); err != nil {
+		return nil, err
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&configs); err != nil {
+		if syntaxErr, ok := err.(*json.SyntaxError); ok {
+			line, col := validateConfigFindErrorLocation(jsonData, syntaxErr.Offset)
+			return nil, fmt.Errorf("syntax error at line %d, column %d: %v", line, col, err)
+		}
+		return nil, fmt.Errorf("JSON decoding error: %v", err)
+	}
+
+	for i, cfg := range configs {
+		if cfg.Name == "" {
+			return nil, fmt.Errorf("entry %d: 'name' is required", i)
+		}
+		if cfg.Path == "" {
+			return nil, fmt.Errorf("entry %d: 'path' is required", i)
+		}
+		if len(cfg.LaunchTimes) == 0 {
+			return nil, fmt.Errorf("entry %d: 'launch_times' must have at least one time", i)
+		}
+		for _, t := range cfg.LaunchTimes {
+			if _, err := time.Parse("15:04", t); err != nil {
+				return nil, fmt.Errorf("entry %d: invalid time format '%s' (expected HH:MM)", i, t)
+			}
+		}
+		if cfg.DurationMinutes <= 0 {
+			return nil, fmt.Errorf("entry %d: 'duration_minutes' must be positive", i)
+		}
+		if cfg.Recurrence != "daily" && cfg.Recurrence != "hourly" {
+			return nil, fmt.Errorf("entry %d: 'recurrence' must be 'daily' or 'hourly'", i)
+		}
+	}
+
+	return configs, nil
+}
+
+func validateJsonSyntaxHints(data []byte) error {
+	text := string(data)
+
+	// Trailing comma before closing object or array
+	trailingCommaObj := regexp.MustCompile(`,\s*}`)
+	trailingCommaArr := regexp.MustCompile(`,\s*]`)
+	if trailingCommaObj.MatchString(text) {
+		return fmt.Errorf("possible trailing comma before closing '}'")
+	}
+	if trailingCommaArr.MatchString(text) {
+		return fmt.Errorf("possible trailing comma before closing ']'")
+	}
+
+	// Missing closing bracket or brace (very basic heuristic)
+	openBraces := bytes.Count(data, []byte("{"))
+	closeBraces := bytes.Count(data, []byte("}"))
+	openBrackets := bytes.Count(data, []byte("["))
+	closeBrackets := bytes.Count(data, []byte("]"))
+
+	if openBraces != closeBraces {
+		return fmt.Errorf("mismatched number of '{' and '}'")
+	}
+	if openBrackets != closeBrackets {
+		return fmt.Errorf("mismatched number of '[' and ']'")
+
+	}
+
+	return nil
+}
+
 // ====== Scheduling ======
 func scheduleApp(app AppConfig, dryRun bool) {
+	// first clear any existing timers for this app
+	runningMu.Lock()
+	for _, t := range scheduledTimers[app.Name] {
+		t.Stop()
+	}
+	scheduledTimers[app.Name] = nil
+	runningMu.Unlock()
+
+	// Schedule each launch time
 	for _, launchTimeStr := range app.LaunchTimes {
 		layout := "15:04"
 		now := time.Now()
@@ -241,6 +484,30 @@ func scheduleApp(app AppConfig, dryRun bool) {
 				return
 			}
 
+			/*
+				// NEW HERE
+				// Optional: override PID from wrapper script if Chrome
+				if strings.Contains(strings.ToLower(app.Name), "chrome") {
+					pidFile := "/tmp/chrome_launcher.pid" // adjust if needed
+					if realPID, err := readPIDFromFile(pidFile); err == nil {
+						alive, err := isProcessRunning(realPID)
+						if err == nil && alive {
+							runningMu.Lock()
+							cur := runningApps[app.Name]
+							cur.PID = realPID
+							runningApps[app.Name] = cur
+							runningMu.Unlock()
+							log.Printf("%s real PID %d read from wrapper and verified alive", app.Name, realPID)
+						} else {
+							log.Printf("Real PID %d for %s not alive or check failed: %v", realPID, app.Name, err)
+						}
+					} else {
+						log.Printf("Failed to read real PID for %s: %v", app.Name, err)
+					}
+				}
+				// END NEW HERE
+			*/
+
 			runningMu.Lock()
 			runningProcs[app.Name] = cmd
 			runningApps[app.Name] = RunningApp{
@@ -251,7 +518,51 @@ func scheduleApp(app AppConfig, dryRun bool) {
 			}
 			runningMu.Unlock()
 
+			/*
+				// NEW HERE
+				go func(appName string, parentPID int) {
+					time.Sleep(2 * time.Second) // Give Chrome time to fork
+					children, err := findChildPIDs(parentPID)
+					if err != nil {
+						log.Printf("Failed to find child PIDs for %s: %v", appName, err)
+						return
+					}
+					if len(children) > 0 {
+						runningMu.Lock()
+						cur := runningApps[appName]
+						cur.PID = children[0] // Track first child (or all if needed)
+						runningApps[appName] = cur
+						runningMu.Unlock()
+						log.Printf("%s child PID %d is now being tracked", appName, children[0])
+					}
+				}(app.Name, cmd.Process.Pid)
+
+				// Alternative: read PID from a known file if using a wrapper script
+				pidFile := "/tmp/chrome_launcher.pid" // or wherever your wrapper writes it
+				if strings.Contains(strings.ToLower(app.Name), "chrome") {
+					if realPID, err := readPIDFromFile(pidFile); err == nil {
+						runningMu.Lock()
+						cur := runningApps[app.Name]
+						cur.PID = realPID
+						runningApps[app.Name] = cur
+						runningMu.Unlock()
+						log.Printf("%s real PID %d read from wrapper", app.Name, realPID)
+					} else {
+						log.Printf("Failed to read real PID for %s: %v", app.Name, err)
+					}
+				}
+				// END NEW HERE
+			*/
+
 			log.Printf("%s started with PID %d", app.Name, cmd.Process.Pid)
+			if strings.Contains(strings.ToLower(app.Name), "edge") || strings.Contains(strings.ToLower(app.Name), "chrome") {
+				log.Printf("Note: Google Chrome and Microsoft Edge may fork and detach on macOS. Tracking may be (IS) unreliable.")
+
+				// Suppress verbose updater messages from Chrome and Edge
+				cmd.Stdout = nil
+				cmd.Stderr = nil
+
+			}
 
 			go func(appName string, cmd *exec.Cmd, pid int) {
 				err := cmd.Wait()
@@ -271,14 +582,35 @@ func scheduleApp(app AppConfig, dryRun bool) {
 
 			time.Sleep(time.Duration(app.DurationMinutes) * time.Minute)
 
+			/*
+				runningMu.Lock()
+				cur, ok := runningApps[app.Name]
+				runningMu.Unlock()
+				if ok && cur.PID == cmd.Process.Pid {
+					if err := cmd.Process.Kill(); err != nil {
+						log.Printf("Failed to terminate %s: %v", app.Name, err)
+					} else {
+						log.Printf("%s terminated after %d minutes", app.Name, app.DurationMinutes)
+					}
+				}
+			*/
 			runningMu.Lock()
 			cur, ok := runningApps[app.Name]
 			runningMu.Unlock()
+
 			if ok && cur.PID == cmd.Process.Pid {
-				if err := cmd.Process.Kill(); err != nil {
-					log.Printf("Failed to terminate %s: %v", app.Name, err)
+				if err := killProcessTree(cmd.Process.Pid); err != nil {
+					// Fallback to direct kill if tree-kill fails
+					if err2 := cmd.Process.Kill(); err2 != nil {
+						log.Printf("Failed to terminate %s (PID %d): %v (fallback: %v)",
+							app.Name, cmd.Process.Pid, err, err2)
+					} else {
+						log.Printf("%s terminated after %d minutes (fallback kill)",
+							app.Name, app.DurationMinutes)
+					}
 				} else {
-					log.Printf("%s terminated after %d minutes", app.Name, app.DurationMinutes)
+					log.Printf("%s terminated after %d minutes (tree kill)",
+						app.Name, app.DurationMinutes)
 				}
 			}
 
@@ -324,12 +656,25 @@ func reloadAndReschedule() {
 	// Kill all currently running processes. Waiters will reap/cleanup.
 	runningMu.Lock()
 	for _, cmd := range runningProcs {
-		_ = cmd.Process.Kill()
+		if err := killProcessTree(cmd.Process.Pid); err != nil {
+			// Fallback: best-effort single process kill
+			_ = cmd.Process.Kill()
+		}
 	}
-	// Reset maps (safe; waiter will no-op if entries are gone)
 	runningProcs = make(map[string]*exec.Cmd)
 	runningApps = make(map[string]RunningApp)
 	runningMu.Unlock()
+
+	/*
+		runningMu.Lock()
+		for _, cmd := range runningProcs {
+			_ = cmd.Process.Kill()
+		}
+		// Reset maps (safe; waiter will no-op if entries are gone)
+		runningProcs = make(map[string]*exec.Cmd)
+		runningApps = make(map[string]RunningApp)
+		runningMu.Unlock()
+	*/
 
 	// Reschedule all apps
 	for _, app := range apps {
@@ -343,7 +688,8 @@ func reloadAndReschedule() {
 // ====== HTTP Status Server ======
 func startHTTPStatusServer(port int, refreshInterval int) {
 	// Simple HTTP server to show running and scheduled apps
-	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+	// http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 
 		// Snapshot running apps without holding the lock during I/O
@@ -356,7 +702,12 @@ func startHTTPStatusServer(port int, refreshInterval int) {
 
 		fmt.Fprintf(w, `<html><head><meta http-equiv="refresh" content="%d"><title>Launcher Running Applications</title></head><body>`, refreshInterval)
 		fmt.Fprintln(w, `<h2>Launcher: Running Applications</h2><ul>`)
+		fmt.Fprintf(w, `<li>Port: %d, Refresh interval: %d</li>`, port, refreshInterval)
+		if verboseLog {
+			fmt.Fprintf(w, `<li>Current time: %s</li>`, time.Now().Format(time.RFC1123))
+		}
 
+		fmt.Fprintf(w, `<br><br><hr>`)
 		if len(snapshot) == 0 {
 			fmt.Fprintln(w, `<li>No applications are currently running.</li>`)
 		} else {
@@ -388,8 +739,8 @@ func startHTTPStatusServer(port int, refreshInterval int) {
 			if app.Recurrence != "" {
 				fmt.Fprintf(w, `&emsp;- Recurrence: %s</li>`, app.Recurrence)
 			}
-			fmt.Fprintf(w, `<br>&emsp;Full config: Name=%s, Path=%s, Params=%s, LaunchTimes=%v, DurationMinutes=%d, Recurrence=%s</br>`,
-				app.Name, app.Path, app.Params, app.LaunchTimes, app.DurationMinutes, app.Recurrence)
+			fmt.Fprintf(w, `<br>&emsp;Full config: Name=%s, Path=%s, Params=%s, LaunchTimes=%v, DurationMinutes=%d, Recurrence=%s, Comment=%s</br>`,
+				app.Name, app.Path, app.Params, app.LaunchTimes, app.DurationMinutes, app.Recurrence, app.Comment)
 		}
 		fmt.Fprintln(w, `</ul></body></html>`)
 	})
@@ -405,32 +756,25 @@ func main() {
 	var httpPort int
 	var httpRefreshInterval int
 
-	flag.BoolVar(&checkUpdate, "checkupdate", true, "Check for application updates")
+	flag.BoolVar(&checkUpdate, "checkupdate", false, "Check for application updates")
+	flag.BoolVar(&checkUpdateOnly, "checkupdateonly", false, "Check for application updates and exit")
+	flag.BoolVar(&makeSampleConfig, "makeconfig", false, "Make Windows and non Windows sample configurations and exit")
+	flag.BoolVar(&makeSampleConfig, "makesample", false, "Make Windows and non Windows sample configurations and exit")
 	flag.StringVar(&configPath, "config", "launcher.json", "Path to configuration file")
 	flag.StringVar(&logPath, "log", "launcher.log", "Path to log file")
 	flag.BoolVar(&dryRun, "dry-run", false, "Simulate launches without executing")
 	flag.BoolVar(&dryRun, "sim", false, "sim alias for --dry-run")
 	flag.BoolVar(&dryRun, "simulate", false, "simulate alias for --dry-run")
 	flag.BoolVar(&listOnly, "list", false, "List scheduled applications and exit")
-	flag.BoolVar(&showStatus, "status", false, "Start an http listener on http://localhost:8080 (or specified port) to show currently running applications")
+	flag.BoolVar(&showStatus, "status", false, "Start an http listener on http://localhost:80 (or specified port) to show currently running applications")
 	flag.Int64Var(&maxLogSize, "max-log-size", 1024*1024, "Maximum log file size in bytes before rotation (1Mb)")
 	flag.IntVar(&logRetention, "log-retention", 3, "Number of rotated logs to retain")
 	flag.DurationVar(&reloadInterval, "reload-interval", 60*time.Second, "Interval to check for config changes (best never less than 60s)")
-	flag.IntVar(&httpPort, "http-port", 8080, "Port for HTTP status server")
+	flag.IntVar(&httpPort, "http-port", 80, "Port for HTTP status server")
 	flag.IntVar(&httpRefreshInterval, "http-refresh", 5, "Refresh interval in seconds for HTTP status page")
 	flag.BoolVar(&verboseLog, "verbose", false, "Verbose / debug logging")
+	flag.BoolVar(&verboseLog, "debug", false, "Verbose / debug logging")
 	flag.Parse()
-
-	// check update first
-	if checkUpdate {
-		updtmsg, available := updateChecker("amarillier", "KrankyBearLauncher", "Kranky Bear Launcher", "https://github.com/amarillier/KrankyBearClock/releases/latest")
-		if updtmsg == "" {
-			// open a window to show the update message
-			// no need to test for updt window open at first start
-			fmt.Println(updtmsg, available)
-		}
-		return
-	}
 
 	if listOnly {
 		apps, _, err := loadConfig()
@@ -450,6 +794,48 @@ func main() {
 	}
 	defer logFile.Close()
 	log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+
+	// check update first
+	if checkUpdate || checkUpdateOnly {
+		// Check for updates and exit
+		fmt.Println("Checking for updates...")
+		log.Println("Checking for updates...")
+		updtmsg, updateAvail := updateChecker("amarillier", "KrankyBearLauncher", "Kranky Bear Launcher", "https://github.com/amarillier/KrankyBearClock/releases/latest")
+		fmt.Println(updtmsg)
+		log.Println(updtmsg)
+		if updateAvail {
+			fmt.Println("Update available:", updtmsg)
+			fmt.Println("Please visit the GitHub releases page to download the latest version.")
+			log.Println("Update available:", updtmsg)
+			log.Println("Please visit the GitHub releases page to download the latest version.")
+		}
+		if checkUpdateOnly {
+			os.Exit(0)
+		}
+	}
+
+	// validate json config file first
+	jsonData, err := os.ReadFile(expandPath(configPath))
+	if err != nil {
+		log.Fatalf("Failed to read config file: %v", err)
+	}
+	configs, err := ValidateConfig(jsonData)
+	if err != nil {
+		log.Fatalf("Config validation failed: %v", err)
+	}
+	log.Println("Config is valid. Loaded", len(configs), "apps.")
+
+	// check for request to make sample config files
+	if makeSampleConfig {
+		if err := makeSampleConfigs(); err != nil {
+			fmt.Println("Failed to create sample configs:", err)
+			log.Println("Failed to create sample configs:", err)
+			os.Exit(1)
+		}
+		fmt.Println("Sample configuration files created.")
+		log.Println("Sample configuration files created.")
+		os.Exit(0)
+	}
 
 	if showStatus {
 		startHTTPStatusServer(httpPort, httpRefreshInterval)
@@ -504,7 +890,7 @@ func main() {
 	setupSignalHandlers() // implemented per OS as separate signals_*.go
 
 	// Monitor running processes for external termination
-	go func() {
+	/*go func() {
 		for {
 			time.Sleep(10 * time.Second) // check every 10 seconds
 			runningMu.Lock()
@@ -521,6 +907,28 @@ func main() {
 						delete(runningApps, name)
 						delete(runningProcs, name)
 					}
+				}
+			}
+			runningMu.Unlock()
+		}
+	}()
+	*/
+
+	// Monitor running processes for external termination
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			runningMu.Lock()
+			for name, app := range runningApps {
+				alive, err := isProcessRunning(app.PID)
+				if err != nil {
+					log.Printf("Liveness check error for %s (PID %d): %v", name, app.PID, err)
+					continue
+				}
+				if !alive {
+					log.Printf("Detected exit of %s (PID %d) via liveness check", name, app.PID)
+					delete(runningApps, name)
+					delete(runningProcs, name)
 				}
 			}
 			runningMu.Unlock()

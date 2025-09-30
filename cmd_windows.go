@@ -32,7 +32,7 @@ func buildCmd(app AppConfig, args []string) *exec.Cmd {
 	case ".bat", ".cmd":
 		// Use cmd.exe to run batch scripts.
 		// Separate arguments are safe—Go will quote as needed.
-		base := []string{"/C", "call", p}
+		base := []string{"/D /C", "call", p}
 		cmd := exec.Command("cmd.exe", append(base, args...)...)
 		cmd.Dir = filepath.Dir(p)
 		cmd.Env = os.Environ()

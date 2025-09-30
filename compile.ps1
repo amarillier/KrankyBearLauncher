@@ -1,2 +1,1 @@
-
-go build -o BusinessAppBSOD.exe main.go
+go build -ldflags="-w -s" -trimpath -o bin/WinAMD64/launcher.exe

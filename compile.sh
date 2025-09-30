@@ -10,20 +10,17 @@
 #export GOARCH=386
 #export CC=i686-w64-mingw32-gcc
 
-rm launcher.exe launcher-amd launcher-arm launcher-linuxamd launcher-linuxarm
+rm launcher bin/*/launcher*
 
-GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -trimpath -o launcher.exe
+GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -trimpath -o bin/WinAMD64/launcher.exe
+GOOS=windows GOARCH=arm64 go build -ldflags="-w -s" -trimpath -o bin/WinARM64/launcher.exe
 
-GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -trimpath -o launcher-amd
-GOOS=darwin GOARCH=arm64 go build -ldflags="-w -s" -trimpath -o launcher-arm
-cp launcher-arm launcher
+GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -trimpath -o bin/MacOSAMD64/launcher
+GOOS=darwin GOARCH=arm64 go build -ldflags="-w -s" -trimpath -o bin/MacOSARM64/launcher
+cp bin/MacOSARM64/launcher ./launcher
 
-GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -trimpath -o launcher-linuxamd
-GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -trimpath -o launcher-linuxarm
-
-# set CGO_ENABLED=1
-# go build -ldflags="-H=windowsgui"
+GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -trimpath -o bin/LinuxAMD64/launcher
+GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -trimpath -o bin/LinuxARM64/launcher
 
 
-#go build -buildmode=c-shared -o BusinessApp.dll busappdll.go
-#go build -o BusinessApp.exe main.go
+# "Now this is not the end. It is not even the beginning of the end. But it is, perhaps, the end of the beginning." Winston Churchill, November 10, 1942

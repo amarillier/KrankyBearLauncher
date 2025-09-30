@@ -3,19 +3,46 @@
     "name": "timer",
     "path": "~/bin/timer",
     "params": "",
-    "launch_times": ["14:39", "14:41", "14:43"],
+    "launch_times": ["13:37", "13:39", "13:41"],
     "duration_minutes": 1,
     "recurrence": "daily",
     "comment": "A simple timer app I wrote"
   },
-    {
+  {
     "name": "Inkscape",
     "path": "/Applications/Inkscape.app/Contents/MacOS/inkscape",
     "params": "",
-    "launch_times": ["14:39", "14:43"],
+    "launch_times": ["13:37", "13:39"],
     "duration_minutes": 1,
     "recurrence": "daily",
     "comment": "Vector graphics editor"
+  },
+  {
+    "name": "Google Chrome",
+    "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "params": "--new-window --new-window --incognito https://www.google.com/",
+    "launch_times": ["14:29", "14:31"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "Google Chrome in incognito mode, use --new-window to force a new window"
+  },
+  {
+    "name": "Google Chrome via shell script",
+    "path": "./chrome_launch.sh",
+    "params": "https://www.google.com/",
+    "launch_times": ["09:34", "09:36"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "Google Chrome in incognito mode, use --new-window to force a new window"
+  },
+  {
+    "name": "Microsoft Edge",
+    "path": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    "params": "-new-window -inprivate https://www.google.com/",
+    "launch_times": ["14:29", "14:31"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "Microsoft Edge in incognito mode, use --new-window to force a new window"
   },
   {
     "name": "HourlyApp",
@@ -27,4 +54,3 @@
     "comment": "An app that runs every hour"
   }
 ]
-

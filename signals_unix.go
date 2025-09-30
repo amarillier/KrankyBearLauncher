@@ -29,13 +29,21 @@ func setupSignalHandlers() {
 			case syscall.SIGINT, syscall.SIGTERM:
 				log.Println("Shutting down...")
 				runningMu.Lock()
+				/*
+					for _, cmd := range runningProcs {
+						// Try graceful SIGTERM; fallback to Kill
+						if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+							log.Printf("Failed to send SIGTERM to PID %d: %v", cmd.Process.Pid, err)
+							_ = cmd.Process.Kill()
+						}
+					}
+				*/
 				for _, cmd := range runningProcs {
-					// Try graceful SIGTERM; fallback to Kill
-					if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-						log.Printf("Failed to send SIGTERM to PID %d: %v", cmd.Process.Pid, err)
+					if err := killProcessTree(cmd.Process.Pid); err != nil {
 						_ = cmd.Process.Kill()
 					}
 				}
+
 				runningMu.Unlock()
 				os.Exit(0)
 			}

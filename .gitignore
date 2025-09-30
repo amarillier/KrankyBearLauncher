@@ -15,9 +15,7 @@ test/*
 tst/*
 bin/*
 installers/*
-KrankyBearClock.app
-KrankyBearClock
-KrankyBearClock.exe
+*sample*
 UNUSED/*
 ResourcesUnused/*
 Resources/*.txt
@@ -35,6 +33,7 @@ vendor/*
 
 # Logs
 *.log
+*log*
 
 # Unit test / coverage reports
 

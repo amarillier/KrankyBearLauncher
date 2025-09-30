@@ -8,16 +8,23 @@
 * .json config file specifies applications, parameters, one or multiple start times, duration, recurrence
 *   recurrence allows hourly, daily, weekly, or null meaning no recurrence
 *   switches allow for multiple config files, default is launcher.json
+* json syntax verification at start time only verifies the json config is valid
+    testing for additional comma, missing comma, missing { or }, missing [ or ]
+    NOTE: After launch, changes made to a config file will be detected by syntax
+    checks are not performed
 * dry run / simulation capability simulates execution without actually executing
 * ~/ and $HOME/ syntax for Linux / MacOS are recognized and expanded, explicit paths to applications are supported
 * logging to specified log file, default is launcher.log
-*   configurable log rotation at default 1Mb with log retention at default 3 log files
+    configurable log rotation at default 1Mb with log retention at default 3 log files
 * optional http listener - status shows both currently launched and scheduled applications
-*   http listen port (default 8080) and auto browser refresh interval (default 5 seconds) are customizable via switches
-* automated configuration change detection reloads launcher*.json changes. NOTE: reloading
-*   configurations will terminate any currently launched applications so the new schedule applies
+    http listen port (default 8080) and auto browser refresh interval (default 5 seconds) are
+    customizable via switches
+* automated configuration change detection reloads launcher*.json changes.
+    NOTE: reloading configurations due to any changes detected will terminate any
+    currently launched applications so the new schedule applies immediately
 * ability to force configuration reload with a SIGUSR1 signal for Mac, Linux only
-* signal detection - SIGINT and SIGTERM for Mac, Windows, Linux terminates all running apps and the launcher when the launcher exits
+* signal detection - SIGINT and SIGTERM for Mac, Windows, Linux terminates all running
+    apps and the launcher when the launcher exits
 * 
 
 ### See below for usage and syntax
@@ -44,12 +51,18 @@ All KrankyBear icons, images, logos used are copyright (c) Allan Marillier, 2024
 
 All switches accept single or double - or -- syntax
 Usage of ./KrankyBearLauncher:
+  -checkupdate
+        Check for application updates
+  -checkupdateonly
+        Check for application updates and exit
   -config string
         Path to configuration file (default "launcher.json")
+  -debug
+        Verbose / debug logging
   -dry-run
         Simulate launches without executing
   -http-port int
-        Port for HTTP status server (default 8080)
+        Port for HTTP status server (default 80)
   -http-refresh int
         Refresh interval in seconds for HTTP status page (default 5)
   -list
@@ -58,6 +71,10 @@ Usage of ./KrankyBearLauncher:
         Path to log file (default "launcher.log")
   -log-retention int
         Number of rotated logs to retain (default 3)
+  -makeconfig
+        Make Windows and non Windows sample configurations and exit
+  -makesample
+        Make Windows and non Windows sample configurations and exit
   -max-log-size int
         Maximum log file size in bytes before rotation (1Mb) (default 1048576)
   -reload-interval duration
@@ -67,7 +84,7 @@ Usage of ./KrankyBearLauncher:
   -simulate
         simulate alias for --dry-run
   -status
-        Start an http listener on http://localhost:8080 (or specified port) to show currently running applications
+        Start an http listener on http://localhost:80 (or specified port) to show currently running applications
   -verbose
         Verbose / debug logging
 
@@ -107,6 +124,13 @@ absolute paths, as well as non Windows home directory expansion of
 application. This would generally not be used with both Windows and non
 Windows path styles
 
+NOTE: Google Chrome and Microsoft Edge both behave weirdly in many cases
+since both are based on Chromium. They launch a process, which launches
+another process and detaches. This is very difficult and unpredictable to
+track (reliably). It is best to avoid launching either of them because
+they may not show properly in application tracking, and may not be 
+properly terminated when their run time expires. Use other applications.
+
 [
   {
     "name": "notepad",
@@ -114,7 +138,17 @@ Windows path styles
     "params": "",
     "launch_times": ["10:00"],
     "duration_minutes": 10,
-    "recurrence": "daily"
+    "recurrence": "daily",
+    "comment": "Notepad sucks - why do this? NOTE: Double backslash to escape \ in path"
+  },
+    {
+    "name": "DB Browser SQLite",
+    "path": "c:\\Program Files\\DB Browser for SQLite\\DB Browser for SQLite.exe",
+    "params": "",
+    "launch_times": ["10:00"],
+    "duration_minutes": 10,
+    "recurrence": "daily",
+    "comment": "DB Browser for SQLite NOTE: Double backslash to escape \ in path"
   },
   {
     "name": "timer",
@@ -122,7 +156,8 @@ Windows path styles
     "params": "",
     "launch_times": ["09:25", "09:27", "09:29"],
     "duration_minutes": 1,
-    "recurrence": "daily"
+    "recurrence": "daily",
+    "comment": "comment here"
   },
   {
     "name": "clock",
@@ -130,7 +165,8 @@ Windows path styles
     "params": "",
     "launch_times": ["09:25"],
     "duration_minutes": 1,
-    "recurrence": "weekly"
+    "recurrence": "weekly",
+    "comment": "comment here"
   },
   {
     "name": "chrome",
@@ -138,7 +174,8 @@ Windows path styles
     "params": "--incognito" "https://www.tanium.com/",
     "launch_times": ["10:30", "11:00"],
     "duration_minutes": 15,
-    "recurrence": "daily"
+    "recurrence": "daily",
+    "comment": "comment here"
   },
   {
     "name": "Inkscape",
@@ -146,7 +183,8 @@ Windows path styles
     "params": "",
     "launch_times": ["09:26", "09:27"],
     "duration_minutes": 1,
-    "recurrence": "daily"
+    "recurrence": "daily",
+    "comment": "comment here"
   },
   {
     "name": "HourlyApp",
@@ -154,7 +192,10 @@ Windows path styles
     "params": "Hello from hourly app",
     "launch_times": ["00:00"],
     "duration_minutes": 1,
-    "recurrence": "hourly"
+    "recurrence": "hourly",
+    "comment": "comment here"
   }
 ]
 
+
+# "Now this is not the end. It is not even the beginning of the end. But it is, perhaps, the end of the beginning." Winston Churchill, November 10, 1942
