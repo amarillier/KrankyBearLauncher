@@ -23,7 +23,7 @@ latestcheck.json
 
 # Distribution / packaging
 *.zip
-*.exe
+#*.exe
 *.dmg
 
 # go modules, we should be able to get all of these any time
