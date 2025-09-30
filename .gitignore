@@ -33,7 +33,7 @@ vendor/*
 
 # Logs
 *.log
-*log*
+*.log.*
 
 # Unit test / coverage reports
 
