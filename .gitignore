@@ -13,8 +13,6 @@ sensors/*.sh
 templates/*
 test/*
 tst/*
-bin/*
-installers/*
 *sample*
 UNUSED/*
 ResourcesUnused/*
