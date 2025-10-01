@@ -4,6 +4,7 @@
 *id_dsa*
 authorized_keys*
 IAM*
+.DS_Store
 .DS_Store/*
 .vscode
 original/*

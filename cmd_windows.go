@@ -27,6 +27,17 @@ func buildCmd(app AppConfig, args []string) *exec.Cmd {
 		cmd.Env = os.Environ()
 		// Optional: hide console windows for GUI apps
 		// cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		// cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP}
+		// Detach the process
+		/*
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				CreationFlags: syscall.CREATE_NEW_CONSOLE | syscall.DETACHED_PROCESS,
+				// Optionally, redirect standard handles to avoid issues when the parent console closes
+				// StdOut: syscall.Handle(os.DevNull.Fd()),
+				// StdErr: syscall.Handle(os.DevNull.Fd()),
+				// StdIn:  syscall.Handle(os.DevNull.Fd()),
+			}
+		*/
 		return cmd
 
 	case ".bat", ".cmd":

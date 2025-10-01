@@ -1,7 +1,7 @@
 Release notes
 
 Todo
-- Test windows launch and terminate
+- windows launch notepad does not track, DB browser and chrome do
 - Test both launch single instances and cleanup
 - Test http status updates properly on Win
 
@@ -10,7 +10,7 @@ Todo
 - add Windows service capability
 - consider using JSONC: https://github.com/tidwall/jsonc for comments in json
 
-0.1 
+0.1
 - initial checkin
 
 #  "Now this is not the end. It is not even the beginning of the end. But it is, perhaps, the end of the beginning." Winston Churchill, November 10, 1942

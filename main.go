@@ -68,7 +68,7 @@ var (
 
 const (
 	appName    = "Kranky Bear Launcher"
-	appVersion = "0.1.1" // see FyneApp.toml
+	appVersion = "0.1.0" // see FyneApp.toml
 	appAuthor  = "Allan Marillier"
 )
 
@@ -484,30 +484,6 @@ func scheduleApp(app AppConfig, dryRun bool) {
 				return
 			}
 
-			/*
-				// NEW HERE
-				// Optional: override PID from wrapper script if Chrome
-				if strings.Contains(strings.ToLower(app.Name), "chrome") {
-					pidFile := "/tmp/chrome_launcher.pid" // adjust if needed
-					if realPID, err := readPIDFromFile(pidFile); err == nil {
-						alive, err := isProcessRunning(realPID)
-						if err == nil && alive {
-							runningMu.Lock()
-							cur := runningApps[app.Name]
-							cur.PID = realPID
-							runningApps[app.Name] = cur
-							runningMu.Unlock()
-							log.Printf("%s real PID %d read from wrapper and verified alive", app.Name, realPID)
-						} else {
-							log.Printf("Real PID %d for %s not alive or check failed: %v", realPID, app.Name, err)
-						}
-					} else {
-						log.Printf("Failed to read real PID for %s: %v", app.Name, err)
-					}
-				}
-				// END NEW HERE
-			*/
-
 			runningMu.Lock()
 			runningProcs[app.Name] = cmd
 			runningApps[app.Name] = RunningApp{
@@ -517,42 +493,6 @@ func scheduleApp(app AppConfig, dryRun bool) {
 				PID:       cmd.Process.Pid,
 			}
 			runningMu.Unlock()
-
-			/*
-				// NEW HERE
-				go func(appName string, parentPID int) {
-					time.Sleep(2 * time.Second) // Give Chrome time to fork
-					children, err := findChildPIDs(parentPID)
-					if err != nil {
-						log.Printf("Failed to find child PIDs for %s: %v", appName, err)
-						return
-					}
-					if len(children) > 0 {
-						runningMu.Lock()
-						cur := runningApps[appName]
-						cur.PID = children[0] // Track first child (or all if needed)
-						runningApps[appName] = cur
-						runningMu.Unlock()
-						log.Printf("%s child PID %d is now being tracked", appName, children[0])
-					}
-				}(app.Name, cmd.Process.Pid)
-
-				// Alternative: read PID from a known file if using a wrapper script
-				pidFile := "/tmp/chrome_launcher.pid" // or wherever your wrapper writes it
-				if strings.Contains(strings.ToLower(app.Name), "chrome") {
-					if realPID, err := readPIDFromFile(pidFile); err == nil {
-						runningMu.Lock()
-						cur := runningApps[app.Name]
-						cur.PID = realPID
-						runningApps[app.Name] = cur
-						runningMu.Unlock()
-						log.Printf("%s real PID %d read from wrapper", app.Name, realPID)
-					} else {
-						log.Printf("Failed to read real PID for %s: %v", app.Name, err)
-					}
-				}
-				// END NEW HERE
-			*/
 
 			log.Printf("%s started with PID %d", app.Name, cmd.Process.Pid)
 			if strings.Contains(strings.ToLower(app.Name), "edge") || strings.Contains(strings.ToLower(app.Name), "chrome") {

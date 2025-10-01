@@ -32,7 +32,16 @@
 
 
 ## To-do / known problems
-- None currently known
+- Google Chrome and Microsoft Edge launch behavior is unpredicatble and may
+    be unrelaible, especially on MacOS because of the way the Chromium browser
+    they are based on launches, spawns another process and detaches. This 
+    generally works as intended on Windows, not on MacOS. The only problem
+    is that immediately after launch, the launcher detects the process
+    terminate after initial launch and loses track of it. Attempts with multiple
+    techniques to detect and track the detached child process are difficult.
+    Basically, use other applications, avoid Chrome and Edge on MacOS or expect
+    to find many Chrome and Edge browser windows running constantly.
+    If this can be improved in future, it will.
 - See ReleaseNotes.txt for all recent changes and future plans
 
 
