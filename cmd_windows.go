@@ -15,7 +15,7 @@ import (
 //   - .bat/.cmd: started via cmd.exe /C call
 //   - .ps1: started via powershell.exe -NoProfile -ExecutionPolicy Bypass -File
 //   - everything else: "shell-open" via cmd.exe /C start "" <path-or-url> [args...]
-//     (NOTE: "start" detaches; you won't get a reliable PID for duration-based kill.)
+//     (NOTE: "start" detaches; we won't always get a reliable PID for duration-based kill.)
 func buildCmd(app AppConfig, args []string) *exec.Cmd {
 	p := os.ExpandEnv(expandPath(app.Path))
 	ext := strings.ToLower(filepath.Ext(p))
@@ -72,7 +72,7 @@ func buildCmd(app AppConfig, args []string) *exec.Cmd {
 }
 
 // Optional: to check whether the command is "detached" (start/open),
-// we can split this into buildCmd + a helper that returns a bool, or
+// possibly can split this into buildCmd + a helper that returns a bool, or
 // parse on extension here and attach metadata in RunningApp if we extend the type.
 // For our current .exe/.com use-case (Notepad/Chrome), the above is enough.
 

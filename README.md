@@ -4,16 +4,23 @@
 
 
 ## Features
-* Scheduler / application launcher for testing application execution and termination at user specified times
-* .json config file specifies applications, parameters, one or multiple start times, duration, recurrence
-*   recurrence allows hourly, daily, weekly, or null meaning no recurrence
-*   switches allow for multiple config files, default is launcher.json
+* Scheduler / application launcher for testing application execution and termination
+    at user specified times - for performance testing, verifying applications
+    execute and are tracked as "in use" for example software inventory and usage 
+    purposes and more.
+* .json config file specifies applications, parameters, one or multiple start times,
+    duration, recurrence
+    recurrence allows hourly, daily, weekly, or null meaning no recurrence
+    switches allow for multiple config files, default is launcher.json
 * json syntax verification at start time only verifies the json config is valid
     testing for additional comma, missing comma, missing { or }, missing [ or ]
     NOTE: After launch, changes made to a config file will be detected by syntax
     checks are not performed
 * dry run / simulation capability simulates execution without actually executing
-* ~/ and $HOME/ syntax for Linux / MacOS are recognized and expanded, explicit paths to applications are supported
+* ~/ and $HOME/ syntax for Linux / MacOS are recognized and expanded, explicit
+    paths to applications are supported. Note for Windows, application paths 
+    using backslashes must be escaped with a second backslash e.g.
+    "c:\\Program Files\\Notepad++\\notepad++.exe"
 * logging to specified log file, default is launcher.log
     configurable log rotation at default 1Mb with log retention at default 3 log files
 * optional http listener - status shows both currently launched and scheduled applications
@@ -32,8 +39,8 @@
 
 
 ## To-do / known problems
-- Google Chrome and Microsoft Edge launch behavior is unpredicatble and may
-    be unrelaible, especially on MacOS because of the way the Chromium browser
+- Google Chrome and Microsoft Edge launch behavior is unpredictable and may
+    be unreliable, especially on MacOS because of the way the Chromium browser
     they are based on launches, spawns another process and detaches. This 
     generally works as intended on Windows, not on MacOS. The only problem
     is that immediately after launch, the launcher detects the process
@@ -42,6 +49,22 @@
     Basically, use other applications, avoid Chrome and Edge on MacOS or expect
     to find many Chrome and Edge browser windows running constantly.
     If this can be improved in future, it will.
+- Some Windows GUI applications launch behavior is unpredictable and may
+    be unreliable. While Chrome and Edge appear to work as intended and launch
+    without the same process detachment MacOS does, other applications in Windows
+    may have similar problems that are extremely difficult to reliably work around
+    for detached process detection. Notepad is one such application, while Notepad++
+    and others work exactly as intended.
+    Notepad will launch a process, be detected, then immediately launch a detached
+    child process that is not detected, and terminate. In this case, multiple Notepad
+    processes would result and never be automatically terminated. A workaround for 
+    this, which unfortunately may not work for some other applications is to 
+    provide a parameter with a file name known to not exist. Notepad will indicate
+    the file does not exist and ask to create it. At this time the launcher is able
+    to keep track of that Notepad process with the prompt to create, leaving it to
+    run, then terminating it at the end of the specified cycle.
+    That's a clumsy solution, but it works - your milage may vary. Test different
+    application launches to see what works and what should be avoided.
 - See ReleaseNotes.txt for all recent changes and future plans
 
 

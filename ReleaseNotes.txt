@@ -1,16 +1,47 @@
 Release notes
 
-Todo
-- windows launch notepad does not track, DB browser and chrome do
-- Test both launch single instances and cleanup
-- Test http status updates properly on Win
+0.2
+- many updates and fixes
 
+0.1
+- initial checkin
+
+## Known problems
+- Google Chrome and Microsoft Edge launch behavior is unpredictable and may
+    be unreliable, especially on MacOS because of the way the Chromium browser
+    they are based on launches, spawns another process and detaches. This 
+    generally works as intended on Windows, not on MacOS. The only problem
+    is that immediately after launch, the launcher detects the process
+    terminate after initial launch and loses track of it. Attempts with multiple
+    techniques to detect and track the detached child process are difficult.
+    Basically, use other applications, avoid Chrome and Edge on MacOS or expect
+    to find many Chrome and Edge browser windows running constantly.
+    If this can be improved in future, it will.
+- Some Windows GUI applications launch behavior is unpredictable and may
+    be unreliable. While Chrome and Edge appear to work as intended and launch
+    without the same process detachment MacOS does, other applications in Windows
+    may have similar problems that are extremely difficult to reliably work around
+    for detached process detection. Notepad is one such application, while Notepad++
+    and others work exactly as intended.
+    Notepad will launch a process, be detected, then immediately launch a detached
+    child process that is not detected, and terminate. In this case, multiple Notepad
+    processes would result and never be automatically terminated. A workaround for 
+    this, which unfortunately may not work for some other applications is to 
+    provide a parameter with a file name known to not exist. Notepad will indicate
+    the file does not exist and ask to create it. At this time the launcher is able
+    to keep track of that Notepad process with the prompt to create, leaving it to
+    run, then terminating it at the end of the specified cycle.
+    That's a clumsy solution, but it works - your milage may vary. Test different
+    application launches to see what works and what should be avoided.
+
+## Todo
+- cleanup unused/commented code - attempts for better detached process detection
 - add setup.exe, .dmg, .rpm and .deb installers
 - possible add launch in active user session ability
 - add Windows service capability
 - consider using JSONC: https://github.com/tidwall/jsonc for comments in json
+    not really needed since I added a comment field to standard json anyway,
+    no need for extra complexity and Go packages to import
 
-0.1
-- initial checkin
 
 #  "Now this is not the end. It is not even the beginning of the end. But it is, perhaps, the end of the beginning." Winston Churchill, November 10, 1942

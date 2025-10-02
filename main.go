@@ -68,7 +68,7 @@ var (
 
 const (
 	appName    = "Kranky Bear Launcher"
-	appVersion = "0.1.0" // see FyneApp.toml
+	appVersion = "0.2.0" // see FyneApp.toml
 	appAuthor  = "Allan Marillier"
 )
 
@@ -131,13 +131,22 @@ func makeSampleConfigs() error {
   {
     "name": "notepad",
     "path": "C:\\Windows\\System32\\notepad.exe",
-    "params": "",
+    "params": "launchertest.txt",
     "launch_times": ["08:56", "08:58"],
     "duration_minutes": 1,
     "recurrence": "daily",
-    "comment": "Notepad sucks - why do this? NOTE: Double backslash to escape \\ in path"
+    "comment": "Notepad sucks - why do this? NOTE: Double backslash to escape \\ in path. NOTE2: use parameter trick to make notepad prompt to open a new file, allowing for detection, where a simple launch would spawn and detach a new process that is hard to track"
   },
-{
+  {
+    "name": "notepad++",
+    "path": "c:\\Program Files\\Notepad++\\notepad++.exe",
+    "params": "",
+    "launch_times": ["09:45", "09:47"],
+    "duration_minutes": 1,
+    "recurrence": "daily",
+    "comment": "Notepad sucks, use Notepad++ NOTE: Double backslash to escape \\ in path"
+  },
+  {
     "name": "DB Browser SQLite",
     "path": "c:\\Program Files\\DB Browser for SQLite\\DB Browser for SQLite.exe",
     "params": "",
@@ -534,6 +543,7 @@ func scheduleApp(app AppConfig, dryRun bool) {
 					}
 				}
 			*/
+
 			runningMu.Lock()
 			cur, ok := runningApps[app.Name]
 			runningMu.Unlock()
